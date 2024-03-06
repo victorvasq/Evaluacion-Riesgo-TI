@@ -404,110 +404,115 @@ if ss["proceso"] == "Resumen":
 		del st.session_state["detalleResumen"]
 		st.rerun()
 	
-	st.title("Resumen: " +ss["iso_seleccionada"])
+	st.title("Resultado: " +ss["iso_seleccionada"])
 	
 	with st.spinner("Espere un momento, estamos analizando sus respuestas..."):
 
-		tab1, tab2 = st.tabs(["Resumen", "Detalles"])
+		#tab1, tab2 = st.tabs(["Resumen", "Detalles"])
 
 		# Tab Resumen
-		with tab1:
-			if ss["Resumen"] == "":
-				preguntasRespuestas = getPreguntasRespuestas()
-				ss["Resumen"] = generar_resumen(openai_api_key, preguntasRespuestas)
-
-			st.subheader("Resumen Ejecutivo")
-			st.write(ss["Resumen"])
-			st.write(" ")
-			st.write(" ")
-			st.write(" ")
-			
-			st.subheader("Dominios Evaluados")
-			for dominio in ss["options_dominios"]:
-				st.write("- "+dominio)
+		#with tab1:
+		if ss["Resumen"] == "":
+			preguntasRespuestas = getPreguntasRespuestas()
+			ss["Resumen"] = generar_resumen(openai_api_key, preguntasRespuestas)
+		
+		st.subheader("Dominios Evaluados")
+		for dominio in ss["options_dominios"]:
+			st.write("- "+dominio)
+		st.write(" ")
+		st.write(" ")
+		st.write(" ")
+		
+		st.subheader("Resumen Ejecutivo")
+		st.write(ss["Resumen"])
+		st.write(" ")
+		st.write(" ")
+		st.write(" ")
+		
+		
 		
 		# Tab Detalle 
-		with tab2:
-			if len(ss["detalleResumen"]) == 0:
-				pregRespDominio=""
-				nota = 0
-				Sugerencias=""
-				Hallazgos=""
-				k=0
-				descripcionNota=""
-				for iso, info in preguntasIsos.items():
-					if ss["iso_seleccionada"] == iso :
-						for dominio in info["dominios"]:
-							if dominio["aplica"] == "true":
-								nota=0
-								i=0
-								j=0
-								pregRespDominio=""
-								Sugerencias=""
-								Hallazgos=""
-								for pregunta in dominio["preguntas"]:
-									if pregunta["impresa"] == "true" and pregunta["aplica"] == "true":
-										pregRespDominio += pregunta['texto']+" "+pregunta['resumen']+"<br>"
-										if pregunta['nota'].isdigit(): #devuelve True para cadenas que contienen dígitos del 0 al 9
-											nota += int(pregunta['nota'])
-											i+=1
-											
-										if pregunta['sugerencia'] != "":
-											j+=1
-											Hallazgos += str(j)+".- "+ pregunta['hallazgos'] + "<br>"
-											Sugerencias += str(j)+".- "+ pregunta['sugerencia'] + "<br>"
-											
-											
-								# query a modelo para realizar resumen
-								resumen = generar_resumen(openai_api_key, pregRespDominio)
-								if i == 0:
-									i = 1
-								notaFinal = str(round(nota/i))
+		#with tab2:
+		if len(ss["detalleResumen"]) == 0:
+			pregRespDominio=""
+			nota = 0
+			Sugerencias=""
+			Hallazgos=""
+			k=0
+			descripcionNota=""
+			for iso, info in preguntasIsos.items():
+				if ss["iso_seleccionada"] == iso :
+					for dominio in info["dominios"]:
+						if dominio["aplica"] == "true":
+							nota=0
+							i=0
+							j=0
+							pregRespDominio=""
+							Sugerencias=""
+							Hallazgos=""
+							for pregunta in dominio["preguntas"]:
+								if pregunta["impresa"] == "true" and pregunta["aplica"] == "true":
+									pregRespDominio += pregunta['texto']+" "+pregunta['resumen']+"<br>"
+									if pregunta['nota'].isdigit(): #devuelve True para cadenas que contienen dígitos del 0 al 9
+										nota += int(pregunta['nota'])
+										i+=1
+										
+									if pregunta['sugerencia'] != "":
+										j+=1
+										Hallazgos += str(j)+".- "+ pregunta['hallazgos'] + "<br>"
+										Sugerencias += str(j)+".- "+ pregunta['sugerencia'] + "<br>"
+										
+										
+							# query a modelo para realizar resumen
+							resumen = generar_resumen(openai_api_key, pregRespDominio)
+							if i == 0:
+								i = 1
+							notaFinal = str(round(nota/i))
+							
+							if round(nota/i) <= 2:
+								descripcionNota = "Insuficiente"
+							elif round(nota/i) > 2 and round(nota/i) <=4:
+								descripcionNota = "Baja"
+							elif round(nota/i) > 4 and round(nota/i) <=6:
+								descripcionNota = "Regular"
+							elif round(nota/i) > 6 and round(nota/i) <=8:
+								descripcionNota = "Bien"
+							else:
+								descripcionNota = "Excelente"
+							
+							if j==0:
+								Sugerencias="No se han determinado sugerencias"
+								Hallazgos="No se han determinado hallazgos"
 								
-								if round(nota/i) <= 2:
-									descripcionNota = "Insuficiente"
-								elif round(nota/i) > 2 and round(nota/i) <=4:
-									descripcionNota = "Baja"
-								elif round(nota/i) > 4 and round(nota/i) <=6:
-									descripcionNota = "Regular"
-								elif round(nota/i) > 6 and round(nota/i) <=8:
-									descripcionNota = "Bien"
-								else:
-									descripcionNota = "Excelente"
-								
-								if j==0:
-									Sugerencias="No se han determinado sugerencias"
-									Hallazgos="No se han determinado hallazgos"
-									
-								nueva_fila = [
-								    {"dominio": dominio["nombre"], "notaFinal": notaFinal, "descripcionNota": descripcionNota, "resumen": resumen, "Hallazgos": Hallazgos, "Sugerencias": Sugerencias, "preguntasRespuestas":pregRespDominio}
-								]
-								ss["detalleResumen"].append(nueva_fila)
+							nueva_fila = [
+								{"dominio": dominio["nombre"], "notaFinal": notaFinal, "descripcionNota": descripcionNota, "resumen": resumen, "Hallazgos": Hallazgos, "Sugerencias": Sugerencias, "preguntasRespuestas":pregRespDominio}
+							]
+							ss["detalleResumen"].append(nueva_fila)
 
-								k += 1
-		
-			for elemento in ss["detalleResumen"]:
-				st.markdown(f"""
-				<div style='background-color: rgb(227 227 227);padding: 10px;margin-bottom: 20px;'>
-					<h3>Dominio: {elemento[0]["dominio"]}</h3>
-				</div>
-				""", unsafe_allow_html=True)
+							k += 1
+	
+		for elemento in ss["detalleResumen"]:
+			st.markdown(f"""
+			<div style='background-color: rgb(227 227 227);padding: 10px;margin-bottom: 20px;'>
+				<h3>Dominio: {elemento[0]["dominio"]}</h3>
+			</div>
+			""", unsafe_allow_html=True)
+			st.markdown(f"""
+			<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
+				<p style='margin-top: 5px;'><b>Nota:</b> {elemento[0]["notaFinal"]} ({elemento[0]["descripcionNota"]})</p>
+				<p style='margin-top: 5px;'><b>Resumen:</b> {elemento[0]["resumen"]}</p>
+				<p style='margin-top: 5px;'><b>Hallazgos:</b> {elemento[0]["Hallazgos"]}</p>
+				<p style='margin-top: 5px;'><b>Sugerencias:</b><br>{elemento[0]["Sugerencias"]}</p>
+			</div>
+			""", unsafe_allow_html=True)
+			with st.expander("Preguntas Realizadas"):
 				st.markdown(f"""
 				<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
-					<p style='margin-top: 5px;'><b>Nota:</b> {elemento[0]["notaFinal"]} ({elemento[0]["descripcionNota"]})</p>
-					<p style='margin-top: 5px;'><b>Resumen:</b> {elemento[0]["resumen"]}</p>
-					<p style='margin-top: 5px;'><b>Hallazgos:</b> {elemento[0]["Hallazgos"]}</p>
-					<p style='margin-top: 5px;'><b>Sugerencias:</b><br>{elemento[0]["Sugerencias"]}</p>
+					<p style='margin-top: 5px;'>{elemento[0]["preguntasRespuestas"]}</p>
 				</div>
 				""", unsafe_allow_html=True)
-				with st.expander("Preguntas Realizadas"):
-					st.markdown(f"""
-					<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
-						<p style='margin-top: 5px;'>{elemento[0]["preguntasRespuestas"]}</p>
-					</div>
-					""", unsafe_allow_html=True)
-	
-	
+
+
 	#st.write("Total Tokens: ", ss["total_tokens"])
 ### FIN Resumen ###
 ###################
