@@ -189,7 +189,13 @@ else:
 openai_api_key = st.secrets["api_key"]
 
 
-
+st.markdown("""
+    <style>
+        [data-testid="stHeader"] {
+            display: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 
 #######################
