@@ -207,7 +207,7 @@ if mostrarBarra:
 	    st.sidebar.header('Evaluador de Riesgos Tecnológicos')
 	    st.markdown("""
 	        <div style="text-align: justify;">
-	            Bienvenido al asistente IA de evaluación de riesgos tecnológicos. Este chatbot está diseñado para guiarlo en una encuesta de evaluación, la cual permitirá conocer deficiencias en su organización relacionadas a la seguridad de la información. Finalmente, el sistema procesará la información y entregará el resultado del análisis realizado. Conteste las preguntas con honestidad.
+	            Bienvenido al asistente IA de evaluación de riesgos tecnológicos. Este chatbot está diseñado para guiarlo en una encuesta de autoevaluación, la cual permitirá conocer deficiencias en su organización relacionadas a la seguridad de la información. Finalmente, el sistema procesará la información y entregará el resultado del análisis realizado. Lo único que se solicita al usuario, es que conteste las preguntas con honestidad.
 	        </div>
 	    """, unsafe_allow_html=True)
 	    st.text("")
