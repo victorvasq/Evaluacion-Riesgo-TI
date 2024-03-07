@@ -193,20 +193,6 @@ openai_api_key = st.secrets["api_key"]
 
 
 
-st.markdown("""
-    <style>
-        [data-testid="stHeader"] {
-            display: none !important;
-        }
-		.viewerBadge_link__qRIco {
-  			display: none !important;
-  		}
-    </style>
-""", unsafe_allow_html=True) 
-
-
-
-
 #######################
 ### Menu Lateral ###
 
@@ -551,3 +537,20 @@ if ss["proceso"] == "Resumen":
 	#st.write("Total Tokens: ", ss["total_tokens"]) 
 ### FIN Resumen ###
 ###################
+
+
+
+st.markdown("""
+    <style>
+        [data-testid="stHeader"] {
+            display: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True) 
+st.markdown("""
+    <style>
+		.viewerBadge_link__qRIco {
+            display: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True) 
