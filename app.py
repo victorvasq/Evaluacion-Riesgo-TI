@@ -15,6 +15,14 @@ import openai
 
 st.set_page_config(page_title="Autoevaluador de Riesgo Tecnológico")
 
+st.markdown("""
+    <style>
+        [data-testid="stHeader"] {
+            display: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True) 
+
 
 def modeloMemoryLangChainOpenAI(api_key, modelo, contextoSystem):
     prompt = ChatPromptTemplate.from_messages([
@@ -537,14 +545,3 @@ if ss["proceso"] == "Resumen":
 	#st.write("Total Tokens: ", ss["total_tokens"]) 
 ### FIN Resumen ###
 ###################
-
-
-
-st.markdown("""
-    <style>
-        [data-testid="stHeader"] {
-            display: none !important;
-        }
-    </style>
-""", unsafe_allow_html=True) 
-
