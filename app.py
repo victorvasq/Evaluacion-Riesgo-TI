@@ -397,12 +397,6 @@ if ss["proceso"] == "Chat":
 ###########################
 
 
-#if ss["proceso"] == "Resumen":
-#	st.title("Resumen")
-#	if st.button("Volver a chat"):
-#		ss["proceso"] = "Chat"
-
-#st.stop()
 
 ###############
 ### Resumen ###
@@ -422,7 +416,9 @@ if ss["proceso"] == "Resumen":
 
 	st.title("Autoevaluación Riesgo Tecnológico")
 	st.subheader(ss["iso_seleccionada"])
-	
+	st.write(" ")
+	st.write(" ")
+	st.write(" ")
 	
 
 	#tab1, tab2 = st.tabs(["Resumen", "Detalles"])
