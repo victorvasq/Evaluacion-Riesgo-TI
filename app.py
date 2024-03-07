@@ -547,10 +547,4 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True) 
-st.markdown("""
-    <style>
-		.viewerBadge_link__qRIco {
-            display: none !important;
-        }
-    </style>
-""", unsafe_allow_html=True) 
+
