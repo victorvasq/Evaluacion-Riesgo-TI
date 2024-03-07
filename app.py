@@ -13,6 +13,8 @@ from langchain.callbacks import get_openai_callback
 
 import openai
 
+st.set_page_config(page_title="Autoevaluador de Riesgo Tecnológico")
+
 
 def modeloMemoryLangChainOpenAI(api_key, modelo, contextoSystem):
     prompt = ChatPromptTemplate.from_messages([
@@ -202,7 +204,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True) 
 
-st.set_page_config(page_title="Autoevaluador de Riesgo Tecnológico")
+
 
 
 #######################
