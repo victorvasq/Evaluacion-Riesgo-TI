@@ -2,8 +2,7 @@ import const as const
 import streamlit as st
 import time
 import json
-
-
+ 
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import SystemMessage
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, PromptTemplate
@@ -39,7 +38,7 @@ def generar_resumen(api_key, texto):
         	SystemMessage(content="El texto que envia el usuario son preguntas y respuestas de una entrevista de auditoría. Resume el siguiente texto de manera muy formal y elimina las redundancias:"), # Mensaje persistente del 
 		])
     
-	llm = ChatOpenAI(temperature=0.5, openai_api_key = api_key, model="gpt-4")
+	llm = ChatOpenAI(temperature=0.5, openai_api_key = api_key, model=ss["modeloGPT"])
 	chat_llm_chain = LLMChain(
         	llm=llm,
         	prompt=prompt,
@@ -50,10 +49,10 @@ def generar_resumen(api_key, texto):
 
 def contextoModelo(ISO, dominio, pregunta, otrasPreguntas):
 	return f"""
- Tu rol será de Auditor Informático y deberás revisar el nivel de seguridad de la información de la empresa en relación a la siguiente pregunta obtenida de la {ISO}, del dominio {dominio}, y la pregunta es:
+ Tu rol será de Auditor Informático y deberás revisar el nivel de seguridad de la información de la empresa en relación a la siguiente pregunta obtenida de la {ISO}, del dominio {dominio}, enfocandote únicamente en la siguiente pregunta:
  <<{pregunta}>>
 
- El usuario comenzará respondiendo esta pregunta, pero si no te queda claro su respuesta o no abarca bien la pregunta, deberás consultar tus dudas o lo que sea necesario para poder analizar el nivel de seguridad en relación a esa pregunta. No hagas preguntas sobre:
+ El usuario comenzará respondiendo esta pregunta, pero si no te queda claro su respuesta o no abarca bien el contenido de la pregunta, deberás consultar todas tus dudas hasta que la responda, solicitando siempre detalles en la respuesta, guiando al usuario con ejemplos. No hagas ningun comentario al usuario respecto a las siguientes preguntas:
  <<{otrasPreguntas}>>
 
  La salida deberá ser siempre en el siguiente formato:
@@ -168,6 +167,8 @@ def getPreguntasRespuestas():
 
 #Inicializar general
 ss = st.session_state
+if "modeloGPT" not in ss:
+	ss["modeloGPT"] = "gpt-4-0125-preview" #"gpt-4"
 if "proceso" not in ss:
 	ss["proceso"] = "NivelEvaluacion"
 if "options_dominios" not in ss:
@@ -189,6 +190,21 @@ else:
 openai_api_key = st.secrets["api_key"]
 
 
+
+st.markdown("""
+    <style>
+        [data-testid="stHeader"] {
+            display: none !important;
+        }
+		.viewerBadge_link__qRIco {
+  			display: none !important;
+  		}
+    </style>
+""", unsafe_allow_html=True) 
+
+
+
+
 #######################
 ### Menu Lateral ###
 
@@ -200,8 +216,9 @@ if "lkn" in params:
 
 if mostrarBarra:	
 	with st.sidebar:
+
 	    #openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
-	    st.sidebar.header('Evaluador de Riesgos Tecnológicos')
+	    st.sidebar.header('Autoevaluador de Riesgos Tecnológicos')
 	    st.markdown("""
 	        <div style="text-align: justify;">
 	            Bienvenido al asistente IA de evaluación de riesgos tecnológicos. Este chatbot está diseñado para guiarlo en una encuesta de autoevaluación, la cual permitirá conocer deficiencias en su organización relacionadas a la seguridad de la información. Finalmente, el sistema procesará la información y entregará el resultado del análisis realizado. Lo único que se solicita al usuario, es que conteste las preguntas con honestidad.
@@ -211,6 +228,12 @@ if mostrarBarra:
 	    st.sidebar.header('Aplicación creada por \n')
 	    "[Víctor Vásquez](https://www.linkedin.com/in/victorvasquezrivas/)"
 	    "[victorvasquezrivas@gmail.com](mailto:victorvasquezrivas@gmail.com)"
+	    st.text("")
+	    st.markdown("""
+		<div style="text-align: justify;">
+	            Si te fue útil o te pareció interesante, coméntamelo a mi correo. 
+	        </div>
+		""", unsafe_allow_html=True)
 
 ### Fin Menu Lateral ###
 #######################
@@ -221,7 +244,7 @@ if mostrarBarra:
 #######################
 ### NivelEvaluacion ###
 if ss["proceso"] == "NivelEvaluacion":
-	st.title("Evaluación de Riesgos Tecnológicos")
+	st.title("Autoevaluación de Riesgos Tecnológicos")
 	st.write(" ")
 	st.write(" ")
 	st.write(" ")
@@ -239,13 +262,13 @@ if ss["proceso"] == "NivelEvaluacion":
 	dominios = const.isos[iso_seleccionada]["dominios"]
 	# Extraer los nombres de los dominios
 	nombres_dominios = [dominio["nombre"] for dominio in dominios]
-	options_dominios = st.multiselect('Seleccione el dominio:',nombres_dominios,placeholder="Agregue todos los dominio que evaluará")
+	options_dominios = st.multiselect('Seleccione el o los dominios:',nombres_dominios,placeholder="Agregue todos los dominio que evaluará")
 
 	st.write(" ")
 	st.write(" ")
 	
 	# Selección del nivel de evaluación
-	nivel_evaluacion = st.slider("Seleccione el nivel de profundidad en la evaluación", min_value=1, max_value=10, value=10)
+	nivel_evaluacion = st.slider("Seleccione el nivel de profundidad en la evaluación:", min_value=1, max_value=10, value=10)
 	st.info(f"La cantidad de tiempo aproximado en la evaluación será de : {str(round(150*(nivel_evaluacion/10)*len(options_dominios)/11))} minutos")
 
 	st.write(" ")
@@ -281,7 +304,7 @@ if ss["proceso"] == "Chat":
 		for iso, info in preguntasIsos.items():
 			if ss["iso_seleccionada"] == iso :
 				nombreISO = info["nombreIso"]
-		ss["chat_llm_chain"] = modeloMemoryLangChainOpenAI(openai_api_key, "gpt-4", contextoModelo(nombreISO, ss["nombreDominio"], ss["pregunta"], ss["otrasPreguntas"]))
+		ss["chat_llm_chain"] = modeloMemoryLangChainOpenAI(openai_api_key, ss["modeloGPT"], contextoModelo(nombreISO, ss["nombreDominio"], ss["pregunta"], ss["otrasPreguntas"]))
 
 	
 	# Ya no quedan más preguntas
@@ -295,7 +318,7 @@ if ss["proceso"] == "Chat":
 		ss["messages"] = [{"role": "assistant", "content": ss["pregunta"]}]
 
 
-	st.title("Evaluación: " +ss["iso_seleccionada"])
+	#st.title("Evaluación: " +ss["iso_seleccionada"])
 	st.markdown(f"<h3>Dominio: {ss['nombreDominio']}</h3>", unsafe_allow_html=True)
 	st.markdown(f"<p style='margin-bottom: 60px;'>{ss['descripcionDominio']}</p>", unsafe_allow_html=True)
 	st.subheader('Chat', divider='rainbow')
@@ -400,37 +423,43 @@ if ss["proceso"] == "Resumen":
 		del st.session_state["Resumen"]
 		del st.session_state["detalleResumen"]
 		st.rerun()
-	
-	st.title("Resultado: " +ss["iso_seleccionada"])
-	
-	with st.spinner("Espere un momento, estamos analizando sus respuestas..."):
 
-		#tab1, tab2 = st.tabs(["Resumen", "Detalles"])
+	st.title("Autoevaluación Riesgo Tecnológico")
+	st.subheader(ss["iso_seleccionada"])
+	
+	
 
-		# Tab Resumen
-		#with tab1:
-		if ss["Resumen"] == "":
-			preguntasRespuestas = getPreguntasRespuestas()
-			ss["Resumen"] = generar_resumen(openai_api_key, preguntasRespuestas)
-		
-		st.subheader("Dominios Evaluados")
-		for dominio in ss["options_dominios"]:
-			st.write("- "+dominio)
-		st.write(" ")
-		st.write(" ")
-		st.write(" ")
-		
-		st.subheader("Resumen Ejecutivo")
-		st.write(ss["Resumen"])
-		st.write(" ")
-		st.write(" ")
-		st.write(" ")
-		
-		
-		
-		# Tab Detalle 
-		#with tab2:
-		if len(ss["detalleResumen"]) == 0:
+	#tab1, tab2 = st.tabs(["Resumen", "Detalles"])
+
+	# Tab Resumen
+	#with tab1:
+	if ss["Resumen"] == "":
+		preguntasRespuestas = getPreguntasRespuestas()
+		if preguntasRespuestas != "":
+			with st.spinner("Espere un momento, estamos analizando sus respuestas..."):
+				ss["Resumen"] = generar_resumen(openai_api_key, preguntasRespuestas)
+		else:
+			ss["Resumen"] = "No se cuenta con información para analizar."
+	
+	st.subheader("Dominios Evaluados")
+	for dominio in ss["options_dominios"]:
+		st.write("- "+dominio)
+	st.write(" ")
+	st.write(" ")
+	st.write(" ")
+	
+	st.subheader("Resumen Ejecutivo")
+	st.write(ss["Resumen"])
+	st.write(" ")
+	st.write(" ")
+	st.write(" ")
+	
+	
+	
+	# Tab Detalle 
+	#with tab2:
+	if len(ss["detalleResumen"]) == 0:
+		with st.spinner("Ya queda poco, danos un momento..."):
 			pregRespDominio=""
 			nota = 0
 			Sugerencias=""
@@ -447,9 +476,11 @@ if ss["proceso"] == "Resumen":
 							pregRespDominio=""
 							Sugerencias=""
 							Hallazgos=""
+							notaFinal =""
+							resumen=""
 							for pregunta in dominio["preguntas"]:
 								if pregunta["impresa"] == "true" and pregunta["aplica"] == "true":
-									pregRespDominio += pregunta['texto']+" "+pregunta['resumen']+"<br>"
+									pregRespDominio += "- "+pregunta['texto']+" "+pregunta['resumen']+"<br>"
 									if pregunta['nota'].isdigit(): #devuelve True para cadenas que contienen dígitos del 0 al 9
 										nota += int(pregunta['nota'])
 										i+=1
@@ -461,21 +492,26 @@ if ss["proceso"] == "Resumen":
 										
 										
 							# query a modelo para realizar resumen
-							resumen = generar_resumen(openai_api_key, pregRespDominio)
-							if i == 0:
-								i = 1
-							notaFinal = str(round(nota/i))
-							
-							if round(nota/i) <= 2:
-								descripcionNota = "Insuficiente"
-							elif round(nota/i) > 2 and round(nota/i) <=4:
-								descripcionNota = "Baja"
-							elif round(nota/i) > 4 and round(nota/i) <=6:
-								descripcionNota = "Regular"
-							elif round(nota/i) > 6 and round(nota/i) <=8:
-								descripcionNota = "Bien"
+							if pregRespDominio !="":
+								resumen = generar_resumen(openai_api_key, pregRespDominio)
+								if i == 0:
+									i = 1
+								notaFinal = str(round(nota/i))
+								
+								if round(nota/i) <= 2:
+									descripcionNota = "Insuficiente"
+								elif round(nota/i) > 2 and round(nota/i) <=4:
+									descripcionNota = "Baja"
+								elif round(nota/i) > 4 and round(nota/i) <=6:
+									descripcionNota = "Regular"
+								elif round(nota/i) > 6 and round(nota/i) <=8:
+									descripcionNota = "Bien"
+								else:
+									descripcionNota = "Excelente"
 							else:
-								descripcionNota = "Excelente"
+								notaFinal="-"
+								resumen="-"
+								
 							
 							if j==0:
 								Sugerencias="No se han determinado sugerencias"
@@ -485,29 +521,29 @@ if ss["proceso"] == "Resumen":
 								{"dominio": dominio["nombre"], "notaFinal": notaFinal, "descripcionNota": descripcionNota, "resumen": resumen, "Hallazgos": Hallazgos, "Sugerencias": Sugerencias, "preguntasRespuestas":pregRespDominio}
 							]
 							ss["detalleResumen"].append(nueva_fila)
-
-							k += 1
 	
-		for elemento in ss["detalleResumen"]:
-			st.markdown(f"""
-			<div style='background-color: rgb(227 227 227);padding: 10px;margin-bottom: 20px;'>
-				<h3>Dominio: {elemento[0]["dominio"]}</h3>
-			</div>
-			""", unsafe_allow_html=True)
+							k += 1
+
+	for elemento in ss["detalleResumen"]:
+		st.markdown(f"""
+		<div style='background-color: rgb(227 227 227);padding: 10px;margin-bottom: 20px;'>
+			<h3>Dominio: {elemento[0]["dominio"]}</h3>
+		</div>
+		""", unsafe_allow_html=True)
+		st.markdown(f"""
+		<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
+			<p style='margin-top: 5px;'><b>Nota:</b> {elemento[0]["notaFinal"]} ({elemento[0]["descripcionNota"]})</p>
+			<p style='margin-top: 5px;'><b>Resumen:</b> {elemento[0]["resumen"]}</p>
+			<p style='margin-top: 5px;'><b>Hallazgos:</b> {elemento[0]["Hallazgos"]}</p>
+			<p style='margin-top: 5px;'><b>Sugerencias:</b><br>{elemento[0]["Sugerencias"]}</p>
+		</div>
+		""", unsafe_allow_html=True)
+		with st.expander("Preguntas Realizadas"):
 			st.markdown(f"""
 			<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
-				<p style='margin-top: 5px;'><b>Nota:</b> {elemento[0]["notaFinal"]} ({elemento[0]["descripcionNota"]})</p>
-				<p style='margin-top: 5px;'><b>Resumen:</b> {elemento[0]["resumen"]}</p>
-				<p style='margin-top: 5px;'><b>Hallazgos:</b> {elemento[0]["Hallazgos"]}</p>
-				<p style='margin-top: 5px;'><b>Sugerencias:</b><br>{elemento[0]["Sugerencias"]}</p>
+				<p style='margin-top: 5px;'>{elemento[0]["preguntasRespuestas"]}</p>
 			</div>
 			""", unsafe_allow_html=True)
-			with st.expander("Preguntas Realizadas"):
-				st.markdown(f"""
-				<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
-					<p style='margin-top: 5px;'>{elemento[0]["preguntasRespuestas"]}</p>
-				</div>
-				""", unsafe_allow_html=True)
 
 
 	#st.write("Total Tokens: ", ss["total_tokens"]) 
