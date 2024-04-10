@@ -205,7 +205,7 @@ openai_api_key = st.secrets["api_key"]
 ### Menu Lateral ###
 
 params = st.experimental_get_query_params()
-mostrarBarra = True
+mostrarBarra = False
 if "lkn" in params:
 	if params["lkn"][0] == "view":
 		mostrarBarra = False
