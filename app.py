@@ -13,7 +13,7 @@ from langchain.callbacks import get_openai_callback
 
 import openai
 
-st.set_page_config(page_title="Autoevaluador de Riesgo Tecnológico")
+st.set_page_config(page_title="Evaluador de Riesgo Tecnológico")
 
 st.markdown("""
     <style>
@@ -45,7 +45,7 @@ def modeloMemoryLangChainOpenAI(api_key, modelo, contextoSystem):
 def generar_resumen(api_key, texto):
 	prompt = ChatPromptTemplate.from_messages([
         	HumanMessagePromptTemplate.from_template("<<{human_input}>>"), 
-        	SystemMessage(content="El texto que envia el usuario son preguntas y respuestas de una entrevista de auditoría. Resume el siguiente texto de manera muy formal y elimina las redundancias:"), # Mensaje persistente del 
+        	SystemMessage(content="Resume el siguiente texto de manera muy formal y elimina las redundancias. El estilo de escritura debe ser como si fuera para un informe de auditoría:"), # Mensaje persistente del 
 		])
     
 	llm = ChatOpenAI(temperature=0.5, openai_api_key = api_key, model=ss["modeloGPT"])
@@ -57,93 +57,98 @@ def generar_resumen(api_key, texto):
 	respuesta=chat_llm_chain.predict(human_input=texto)
 	return respuesta
 
-def contextoModelo(ISO, dominio, pregunta, otrasPreguntas):
+def contextoModelo(nombreIso,nombreClausula,nombreCategoria,nombreControl,descripcionControl,descripcionOrientacion,otraInformacion,pregunta1,otrosControles):
 	return f"""
- Tu rol será de Auditor Informático y deberás revisar el nivel de seguridad de la información de la empresa en relación a la siguiente pregunta obtenida de la {ISO}, del dominio {dominio}, enfocandote únicamente en la siguiente pregunta:
- <<{pregunta}>>
+ Tu rol será de Auditor Informático y deberás realizar una evaluación de riesgos de seguridad de la información en relación a la descripción obtenida de la ISO {nombreIso}, del dominio {nombreClausula}, enfocándote únicamente en el siguiente control {nombreControl}:
+ <<{descripcionControl}>>
 
- El usuario comenzará respondiendo esta pregunta, pero si no te queda claro su respuesta o no abarca bien el contenido de la pregunta, deberás consultar todas tus dudas hasta que la responda, solicitando siempre detalles en la respuesta, guiando al usuario con ejemplos. No hagas ningun comentario al usuario respecto a las siguientes preguntas:
- <<{otrasPreguntas}>>
+ Con la siguiente información deberás orientarte para realizar las preguntas de auditoría:
+ <<{descripcionOrientacion}
+ Otra información: {otraInformacion}
+ >>
+ 
+ Con toda la información anterior, deberás realizar preguntas para verificar si se cumple con el control.
 
- La salida deberá ser siempre en el siguiente formato:
- {{"respuesta": {{
-	 "Dudas":"<<Si quedas con dudas en la respuesta del usuario responde 'S', si quedas conforme responde 'N'>>",
-	 "Pregunta":"<<Solo si en el item dudas la respuesta es 'S', deberás incorporar tu nueva consulta acá, si no entonces responde ''>>",
-  	 "Nota":"<<Solo si en el item dudas la respuesta es 'N', deberás evaluar el nivel de seguridad de 1 a 10, siendo el 1 el peor nivel y 10 el óptimo>>",
-  	 "Resumen":"<<Solo si en el item dudas la respuesta es 'N', deberás realizar un breve resumen de la respuesta solo con lo más importante>>",
-  	 "Hallazgo":"<<Solo si en el item dudas la respuesta es 'N' y si en el item 'nota' es menor o igual a 7, deberás redactar solo si existen los hallazgos de auditoría, sino entonces responde ''>>",
-	 "Sugerencia":"<<Solo si en el item 'dudas' la respuesta es 'N' y si en el item 'nota' es menor o igual a 7, agrega tu sugerencia de auditoría a la observación, sino entonces responde ''>>"
- }}
- }}"""
+ No deberás realizar ninguna pregunta referente a otros controles como:
+ {otrosControles}
+
+ La salida de tu respuesta deberá ser siempre con el siguiente formato, y ningún otro formato:
+ {{"respuesta":{{"Dudas":"<<Si quedas con dudas en las respuesta del usuario o aún te quedan preguntas por hacer, responde 'S', si quedas conforme y ya abarcaste todas las preguntas, responde 'N'>>","Pregunta":"<<Solo si en el item dudas la respuesta es 'S', deberás incorporar tu nueva consulta acá, si no entonces responde ''>>","Nota":"<<Solo si en el item dudas la respuesta es 'N', deberás evaluar el nivel de seguridad de 1 a 10, siendo el 1 el peor nivel y 10 el óptimo>>","Resumen":"<<Solo si en el item dudas la respuesta es 'N', deberás realizar un breve resumen de la respuesta solo con lo más importante>>","Hallazgo":"<<Solo si en el item dudas la respuesta es 'N' y si en el item 'nota' es menor o igual a 7, deberás redactar solo si existen los hallazgos de auditoría, sino entonces responde ''>>","Sugerencia":"<<Solo si en el item 'dudas' la respuesta es 'N' y si en el item 'nota' es menor o igual a 7, agrega tu sugerencia de auditoría a la observación, sino entonces responde ''>>"}}}}"""
 
 
 def activaPreguntas (preguntasIsos):
 	# Recorrer los dominios y preguntas y analiza cual toca preguntar
 	for iso, info in preguntasIsos.items():
 		if ss["iso_seleccionada"] == iso :
-			for dominio in info["dominios"]:
-				if dominio['nombre'] in ss["options_dominios"]:
-					cantidadPreguntas = len(dominio["preguntas"])
-					i=0
-					salir = False
-					for pregunta in dominio["preguntas"]:
-						i+=1
-						if i > cantidadPreguntas*ss["nivel_evaluacion"]/10:
-							pregunta['aplica'] = "false"
-				else:
-					dominio['aplica'] = "false"
-					for pregunta in dominio["preguntas"]:
-						pregunta['aplica'] = "false"
+			for dominio in info["Clausula"]:
+				if dominio['Nombre'] not in ss["options_clausulas"]:
+					dominio['Aplica'] = "false"
+					for categoria in dominio["Categorias"]:
+						categoria['Aplica'] = "false"
 	return preguntasIsos
 
 def buscarPregunta (preguntasIsos):
-	nombreDominio = ""
-	descripcionDominio = ""
-	preguntaStr = ""
-	otrasPreguntas = ""
+	nombreIso = ""
+	nombreClausula = ""
+	nombreCategoria = ""
+	objetivoCategoria = ""
+	nombreControl = ""
+	descripcionControl = ""
+	descripcionOrientacion = ""
+	otraInformacion = ""
+	pregunta1 = ""
+	preguntas = ""
 	
 	# Recorrer los dominios y preguntas y analiza cual toca preguntar
 	for iso, info in preguntasIsos.items():
 		if ss["iso_seleccionada"] == iso :
-			for dominio in info["dominios"]:
-				if dominio['aplica'] == "true":
-					nombreDominio = dominio["nombre"]
-					descripcionDominio = dominio["descripcion"]
-					i=0
-					for pregunta in dominio["preguntas"]:
-						if pregunta["aplica"] == "true" and pregunta["impresa"] == "false":
-							i += 1
-							if i == 1: # obtiene la primera pregunta que encuentra
-								preguntaStr = pregunta["texto"]
-							else:
-								otrasPreguntas += pregunta['texto']+" "
-					if i > 0:
-						break
-	
-	return nombreDominio, descripcionDominio, preguntaStr, otrasPreguntas
+			nombreIso = info["NombreIso"]
+			for clausula in info["Clausula"]:
+				if clausula['Aplica'] == "true":
+					for categoria in clausula["Categorias"]:
+						if categoria['Aplica'] == "true":
+							i=0
+							for control in categoria["Control"]:
+								if control["Impresa"] == "false":
+									nombreClausula = clausula["Nombre"]
+									nombreCategoria = categoria["Nombre"]
+									objetivoCategoria = categoria["Objetivo"]
+									nombreControl = control["Nombre"]
+									descripcionControl = control["Control"]
+									descripcionOrientacion = control["Orientacion"]
+									otraInformacion = control["OtraInformacion"]
+									pregunta1 = control["Pregunta1"]
+									#preguntas = control["Preguntas"]
+									break
+									
+	return nombreIso,nombreClausula,nombreCategoria,objetivoCategoria,nombreControl,descripcionControl,descripcionOrientacion,otraInformacion,pregunta1
 
-def desactivarPregunta (preguntasIsos, nombreDominio, preguntaStr, tipo):
-	borradoCorrecto = False
+
+def buscaOtrosControles(preguntasIsos,nombreClausula,nombreCategoria,nombreControl):
+	otrosControles = ""
 	for iso, info in preguntasIsos.items():
 		if ss["iso_seleccionada"] == iso :
-			for dominio in info["dominios"]:
-				if dominio["nombre"] == nombreDominio:
-					for pregunta in dominio["preguntas"]:
-						if pregunta["texto"] == preguntaStr:
-							if tipo == "aplica":
-								pregunta["aplica"] = "false"
-								borradoCorrecto = True
-							if tipo == "impresa":
-								pregunta["impresa"] = "true"
-								borradoCorrecto = True
-							break
-	return borradoCorrecto
+			for clausula in info["Clausula"]:
+				if clausula['Nombre'] == nombreClausula:
+					for categoria in clausula["Categorias"]:
+						if categoria['Nombre'] == nombreCategoria:
+							for control in categoria["Control"]:
+								if control["Nombre"] != nombreControl:
+									otrosControles += " - "+control["Nombre"]+"\n"
+	
+	return otrosControles
+
 
 def cleanVariablesSesion():
-	ss["nombreDominio"] = ""
-	ss["descripcionDominio"] = ""
-	ss["pregunta"] = ""
-	ss["otrasPreguntas"] = ""
+	ss["nombreIso"] = ""
+	ss["nombreClausula"] = ""
+	ss["nombreCategoria"] = ""
+	ss["nombreControl"] = ""
+	ss["descripcionControl"] = ""
+	ss["descripcionOrientacion"] = ""
+	ss["otraInformacion"] = ""
+	ss["pregunta1"] = ""
+	#ss["preguntas"] = ""
 	del st.session_state["chat_llm_chain"]
 	del st.session_state["messages"]
 
@@ -158,17 +163,19 @@ def custom_serializer(obj):
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
 
-def getPreguntasRespuestas():
-	pregRespDominio = ""
+def getControlRespuestas():
+	controlRespuestas = ""
 	for iso, info in preguntasIsos.items():
 		if ss["iso_seleccionada"] == iso :
-			for dominio in info["dominios"]:
-				if dominio["aplica"] == "true":
-					for pregunta in dominio["preguntas"]:
-						if pregunta["impresa"] == "true" and pregunta["aplica"] == "true":
-							pregRespDominio += pregunta['texto']+" "+pregunta['resumen']+"\n"
-
-	return pregRespDominio
+			for clausula in info["Clausula"]:
+				if clausula["Aplica"] == "true":
+					for categoria in clausula["Categorias"]:
+						if categoria['Aplica'] == "true":
+							for control in categoria["Control"]:
+								if control["Impresa"] == "true":
+									controlRespuestas += "Descripción Control: <<"+control["Control"]+">> - Resumen Respuestas: <<"+control['resumen']+">>\n"
+									
+	return controlRespuestas
 
 
 #####################################
@@ -178,7 +185,7 @@ def getPreguntasRespuestas():
 #Inicializar general
 ss = st.session_state
 if "modeloGPT" not in ss:
-	ss["modeloGPT"] = "gpt-4-0125-preview" #"gpt-4"
+	ss["modeloGPT"] = "gpt-4-0125-preview" #"gpt-4" "gpt-4o-2024-05-13"
 if "proceso" not in ss:
 	ss["proceso"] = "NivelEvaluacion"
 if "options_dominios" not in ss:
@@ -187,8 +194,8 @@ if "nombreDominio" not in ss:
 	ss["nombreDominio"] = ""
 if "descripcionDominio" not in ss:
 	ss["descripcionDominio"] = ""
-if "pregunta" not in ss:
-	ss["pregunta"] = ""
+if "pregunta1" not in ss:
+	ss["pregunta1"] = ""
 if "preguntasIsos" not in ss or ss["proceso"] == "NivelEvaluacion":
 	#preguntasIsos = const
 	json_str = json.dumps(const.isos, default=custom_serializer)
@@ -254,31 +261,31 @@ if ss["proceso"] == "NivelEvaluacion":
 	st.write(" ")
 	st.write(" ")
 	
-	# Acceder a los dominios de la ISO especificada
-	dominios = const.isos[iso_seleccionada]["dominios"]
-	# Extraer los nombres de los dominios
-	nombres_dominios = [dominio["nombre"] for dominio in dominios]
-	options_dominios = st.multiselect('Seleccione el o los dominios:',nombres_dominios,placeholder="Agregue todos los dominio que evaluará")
+	# Acceder a los clausulas de la ISO especificada
+	clausulas = const.isos[iso_seleccionada]["Clausula"]
+	# Extraer los nombres de los clausulas
+	nombres_clausulas = [clausula["Nombre"] for clausula in clausulas]
+	options_clausulas = st.multiselect('Seleccione el o los clausulas:',nombres_clausulas,placeholder="Agregue todos los clausula que evaluará")
 
 	st.write(" ")
 	st.write(" ")
 	
 	# Selección del nivel de evaluación
-	nivel_evaluacion = st.slider("Seleccione el nivel de profundidad en la evaluación:", min_value=1, max_value=10, value=10)
-	st.info(f"La cantidad de tiempo aproximado en la evaluación será de : {str(round(150*(nivel_evaluacion/10)*len(options_dominios)/11))} minutos")
+	#nivel_evaluacion = st.slider("Seleccione el nivel de profundidad en la evaluación:", min_value=1, max_value=10, value=10)
+	#st.info(f"La cantidad de tiempo aproximado en la evaluación será de : {str(round(150*(nivel_evaluacion/10)*len(options_clausulas)/11))} minutos")
 
 	st.write(" ")
 	st.write(" ")
 	
 	# Btn Aceptar nivel evaluación
 	if st.button('Evaluar'):
-		if len(options_dominios) == 0:
-			st.warning('Debe seleccionar al menos 1 dominio', icon="⚠️")
+		if len(options_clausulas) == 0:
+			st.warning('Debe seleccionar al menos 1 clausula', icon="⚠️")
 		else:
 			ss["proceso"] = "Chat"
-			ss["nivel_evaluacion"] = nivel_evaluacion
+			#ss["nivel_evaluacion"] = nivel_evaluacion
 			ss["iso_seleccionada"] = iso_seleccionada
-			ss["options_dominios"] = options_dominios
+			ss["options_clausulas"] = options_clausulas
 			ss["preguntasIsos"] = activaPreguntas (preguntasIsos)
 			st.rerun()
 			
@@ -290,43 +297,37 @@ if ss["proceso"] == "NivelEvaluacion":
 ###########################
 ### Chat ###
 if ss["proceso"] == "Chat":
+	
 	if "total_tokens" not in ss:
 		ss["total_tokens"] = 0
-
+	
 	# Buscar pregunta
-	if ss["pregunta"] == "":
-		ss["nombreDominio"],ss["descripcionDominio"], ss["pregunta"], ss["otrasPreguntas"] = buscarPregunta(preguntasIsos)
-		nombreISO = ""
-		for iso, info in preguntasIsos.items():
-			if ss["iso_seleccionada"] == iso :
-				nombreISO = info["nombreIso"]
-		ss["chat_llm_chain"] = modeloMemoryLangChainOpenAI(openai_api_key, ss["modeloGPT"], contextoModelo(nombreISO, ss["nombreDominio"], ss["pregunta"], ss["otrasPreguntas"]))
-
+	if ss["pregunta1"] == "":
+		ss["nombreClausula"]=""
+		ss["nombreCategoria"]=""
+		ss["objetivoCategoria"]=""
+		ss["nombreIso"],ss["nombreClausula"],ss["nombreCategoria"],ss["objetivoCategoria"], ss["nombreControl"],ss["descripcionControl"],ss["descripcionOrientacion"],ss["otraInformacion"],ss["pregunta1"] = buscarPregunta(preguntasIsos)
+		otrosControles = buscaOtrosControles(preguntasIsos,ss["nombreClausula"],ss["nombreCategoria"],ss["nombreControl"])
+		ss["chat_llm_chain"] = modeloMemoryLangChainOpenAI(openai_api_key, ss["modeloGPT"], contextoModelo(ss["nombreIso"],ss["nombreClausula"],ss["nombreCategoria"],ss["nombreControl"],ss["descripcionControl"],ss["descripcionOrientacion"],ss["otraInformacion"],ss["pregunta1"],otrosControles))
+	
 	
 	# Ya no quedan más preguntas
-	if ss["pregunta"] == "": 
+	if ss["pregunta1"] == "": 
 		ss["proceso"] = "Resumen"
 		st.rerun()
 
 
 
 	if "messages" not in ss:
-		ss["messages"] = [{"role": "assistant", "content": ss["pregunta"]}]
+		ss["messages"] = [{"role": "assistant", "content": ss["pregunta1"]}]
 
 
 	#st.title("Evaluación: " +ss["iso_seleccionada"])
-	st.markdown(f"<h3>Dominio: {ss['nombreDominio']}</h3>", unsafe_allow_html=True)
-	st.markdown(f"<p style='margin-bottom: 60px;'>{ss['descripcionDominio']}</p>", unsafe_allow_html=True)
+	st.markdown(f"<h3>Clausula: {ss['nombreClausula']}</h3>", unsafe_allow_html=True)
+	st.markdown(f"<h4>Categoría: {ss['nombreCategoria']}</h4>", unsafe_allow_html=True)
+	st.markdown(f"<p style='margin-bottom: 60px;'>{ss['objetivoCategoria']}</p>", unsafe_allow_html=True)
+	st.markdown(f"<h5>Control: {ss['nombreControl']}</h5>", unsafe_allow_html=True)
 	st.subheader('Chat', divider='rainbow')
-
-	col1, col2 = st.columns([3, 1])
-	if col2.button("No aplica pregunta", type="primary", help="Esta pregunta no aplica a su organización, por lo que se eliminará"):
-		if desactivarPregunta (preguntasIsos, ss["nombreDominio"], ss["pregunta"], "aplica"):
-			cleanVariablesSesion()
-			time.sleep(5)
-			st.rerun()
-		else:
-			st.write("No se pudo desactivar pregunta, intente nuevamente")
 
 
 	# Imprime chat
@@ -334,6 +335,8 @@ if ss["proceso"] == "Chat":
 		with st.chat_message(msg["role"]):
 			st.write(msg["content"])
 
+	
+	
 	# Respuesta
 	if prompt := st.chat_input("Tu respuesta...",):
 		if not openai_api_key:
@@ -355,7 +358,23 @@ if ss["proceso"] == "Chat":
 				ss["total_tokens"] += cb.total_tokens
 				
 				
-				objetoJson = json.loads(respuesta)
+
+				#respuesta_json = json.dumps(respuesta)
+
+
+				# Convertir la cadena JSON a un objeto JSON (diccionario de Python)
+				try:
+					objetoJson = json.loads(respuesta)
+					#st.write(objetoJson)
+				except json.JSONDecodeError as e:
+				    st.error(f"Error al decodificar JSON: {e}")
+				except AttributeError as e:
+				    st.error(f"Error de atributo: {e}")
+				except Exception as e:
+				    st.error(f"Ocurrió un error inesperado: {e}")
+
+
+				
 				pregunta = objetoJson["respuesta"]["Pregunta"]
 				dudas = objetoJson["respuesta"]["Dudas"]
 				nota = objetoJson["respuesta"]["Nota"]
@@ -376,16 +395,18 @@ if ss["proceso"] == "Chat":
 					# guardamos el resultado
 					for iso, info in preguntasIsos.items():
 						if ss["iso_seleccionada"] == iso :
-							for dominio in info["dominios"]:
-								if dominio['nombre'] == ss["nombreDominio"]:
-									for pregunta in dominio["preguntas"]:
-										if pregunta['texto'] == ss["pregunta"]:
-											pregunta['sugerencia'] = sugerencia
-											pregunta['resumen'] = resumen
-											pregunta['hallazgos'] = hallazgos
-											pregunta['nota'] = nota
-											pregunta['impresa'] = "true"
-											cleanVariablesSesion()
+							for clausula in info["Clausula"]:
+								if clausula['Nombre'] == ss["nombreClausula"]:
+									for categoria in clausula["Categorias"]:
+										if categoria['Nombre'] == ss["nombreCategoria"]:
+											for control in categoria["Control"]:
+												if control['Nombre'] == ss["nombreControl"]:
+													control['sugerencia'] = sugerencia
+													control['resumen'] = resumen
+													control['hallazgos'] = hallazgos
+													control['nota'] = nota
+													control['Impresa'] = "true"
+													cleanVariablesSesion()
 					ss["preguntasIsos"] = preguntasIsos
 					#time.sleep(10)
 					st.rerun()
@@ -401,6 +422,8 @@ if ss["proceso"] == "Chat":
 ###############
 ### Resumen ###
 if ss["proceso"] == "Resumen":
+	#st.write(preguntasIsos)
+	
 	#del st.session_state["detalleResumen"]
 	if "Resumen" not in ss:
 		ss["Resumen"] = ""
@@ -414,7 +437,7 @@ if ss["proceso"] == "Resumen":
 		del st.session_state["detalleResumen"]
 		st.rerun()
 
-	st.title("Autoevaluación Riesgo Tecnológico")
+	st.title("Evaluación de Riesgos Tecnológicos")
 	st.subheader(ss["iso_seleccionada"])
 	st.write(" ")
 	st.write(" ")
@@ -423,19 +446,21 @@ if ss["proceso"] == "Resumen":
 
 	#tab1, tab2 = st.tabs(["Resumen", "Detalles"])
 
+
+	
 	# Tab Resumen
 	#with tab1:
 	if ss["Resumen"] == "":
-		preguntasRespuestas = getPreguntasRespuestas()
+		preguntasRespuestas = getControlRespuestas()
 		if preguntasRespuestas != "":
 			with st.spinner("Espere un momento, estamos analizando sus respuestas..."):
 				ss["Resumen"] = generar_resumen(openai_api_key, preguntasRespuestas)
 		else:
 			ss["Resumen"] = "No se cuenta con información para analizar."
 	
-	st.subheader("Dominios Evaluados")
-	for dominio in ss["options_dominios"]:
-		st.write("- "+dominio)
+	st.subheader("Clausulas Evaluadas")
+	for clausulas in ss["options_clausulas"]:
+		st.write("- "+clausulas)
 	st.write(" ")
 	st.write(" ")
 	st.write(" ")
@@ -450,92 +475,40 @@ if ss["proceso"] == "Resumen":
 	
 	# Tab Detalle 
 	#with tab2:
-	if len(ss["detalleResumen"]) == 0:
-		with st.spinner("Ya queda poco, danos un momento..."):
-			pregRespDominio=""
-			nota = 0
-			Sugerencias=""
-			Hallazgos=""
-			k=0
-			descripcionNota=""
-			for iso, info in preguntasIsos.items():
-				if ss["iso_seleccionada"] == iso :
-					for dominio in info["dominios"]:
-						if dominio["aplica"] == "true":
-							nota=0
-							i=0
-							j=0
-							pregRespDominio=""
-							Sugerencias=""
-							Hallazgos=""
-							notaFinal =""
-							resumen=""
-							for pregunta in dominio["preguntas"]:
-								if pregunta["impresa"] == "true" and pregunta["aplica"] == "true":
-									pregRespDominio += "- "+pregunta['texto']+" "+pregunta['resumen']+"<br>"
-									if pregunta['nota'].isdigit(): #devuelve True para cadenas que contienen dígitos del 0 al 9
-										nota += int(pregunta['nota'])
-										i+=1
-										
-									if pregunta['sugerencia'] != "":
-										j+=1
-										Hallazgos += str(j)+".- "+ pregunta['hallazgos'] + "<br>"
-										Sugerencias += str(j)+".- "+ pregunta['sugerencia'] + "<br>"
-										
-										
-							# query a modelo para realizar resumen
-							if pregRespDominio !="":
-								resumen = generar_resumen(openai_api_key, pregRespDominio)
-								if i == 0:
-									i = 1
-								notaFinal = str(round(nota/i))
-								
-								if round(nota/i) <= 2:
-									descripcionNota = "Insuficiente"
-								elif round(nota/i) > 2 and round(nota/i) <=4:
-									descripcionNota = "Baja"
-								elif round(nota/i) > 4 and round(nota/i) <=6:
-									descripcionNota = "Regular"
-								elif round(nota/i) > 6 and round(nota/i) <=8:
-									descripcionNota = "Bien"
-								else:
-									descripcionNota = "Excelente"
-							else:
-								notaFinal="-"
-								resumen="-"
-								
-							
-							if j==0:
-								Sugerencias="No se han determinado sugerencias"
-								Hallazgos="No se han determinado hallazgos"
-								
-							nueva_fila = [
-								{"dominio": dominio["nombre"], "notaFinal": notaFinal, "descripcionNota": descripcionNota, "resumen": resumen, "Hallazgos": Hallazgos, "Sugerencias": Sugerencias, "preguntasRespuestas":pregRespDominio}
-							]
-							ss["detalleResumen"].append(nueva_fila)
-	
-							k += 1
-
-	for elemento in ss["detalleResumen"]:
-		st.markdown(f"""
-		<div style='background-color: rgb(227 227 227);padding: 10px;margin-bottom: 20px;'>
-			<h3>Dominio: {elemento[0]["dominio"]}</h3>
-		</div>
-		""", unsafe_allow_html=True)
-		st.markdown(f"""
-		<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
-			<p style='margin-top: 5px;'><b>Nota:</b> {elemento[0]["notaFinal"]} ({elemento[0]["descripcionNota"]})</p>
-			<p style='margin-top: 5px;'><b>Resumen:</b> {elemento[0]["resumen"]}</p>
-			<p style='margin-top: 5px;'><b>Hallazgos:</b> {elemento[0]["Hallazgos"]}</p>
-			<p style='margin-top: 5px;'><b>Sugerencias:</b><br>{elemento[0]["Sugerencias"]}</p>
-		</div>
-		""", unsafe_allow_html=True)
-		with st.expander("Preguntas Realizadas"):
-			st.markdown(f"""
-			<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
-				<p style='margin-top: 5px;'>{elemento[0]["preguntasRespuestas"]}</p>
-			</div>
-			""", unsafe_allow_html=True)
+	with st.spinner("Ya queda poco, danos un momento..."):
+		pregRespDominio=""
+		nota = 0
+		Sugerencias=""
+		Hallazgos=""
+		k=0
+		descripcionNota=""
+		for iso, info in preguntasIsos.items():
+			if ss["iso_seleccionada"] == iso :
+				for clausula in info["Clausula"]:
+					if clausula['Aplica'] == "true":
+						st.markdown(f"""
+						<div style='background-color: rgb(227 227 227);padding: 10px;margin-bottom: 20px;'>
+							<h3>Clausula: {clausula['Nombre']}</h3>
+						</div>
+						""", unsafe_allow_html=True)
+						for categoria in clausula["Categorias"]:
+							if categoria['Aplica'] == "true":
+								st.markdown(f"""
+								<div style='background-color: none;padding: 10px;margin-bottom: 20px;'>
+									<h5>Categoria: {categoria['Nombre']}</h5>
+								</div>
+								""", unsafe_allow_html=True)
+								for control in categoria["Control"]:
+									if control["Impresa"] == "true":
+										st.markdown(f"""
+										<div style='background-color: #f2f2f2;padding: 10px;margin-bottom: 20px;'>
+		  									<p style='margin-top: 5px;'><b>{control["Nombre"]}</b></p>
+											<p style='margin-top: 5px;'><b>Objetivo Control:</b> {control["Control"]}</p>
+											<p style='margin-top: 5px;'><b>Resumen:</b> {control["resumen"]}</p>
+											<p style='margin-top: 5px;'><b>Hallazgos:</b> {control["hallazgos"]}</p>
+											<p style='margin-top: 5px;'><b>Sugerencias:</b><br>{control["sugerencia"]}</p>
+										</div>
+										""", unsafe_allow_html=True)
 
 
 	#st.write("Total Tokens: ", ss["total_tokens"]) 
