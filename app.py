@@ -247,7 +247,7 @@ if mostrarBarra:
 #######################
 ### NivelEvaluacion ###
 if ss["proceso"] == "NivelEvaluacion":
-	st.title("Autoevaluación de Riesgos Tecnológicos")
+	st.title("Evaluación de Riesgos Tecnológicos")
 	st.write(" ")
 	st.write(" ")
 	st.write(" ")
@@ -265,7 +265,7 @@ if ss["proceso"] == "NivelEvaluacion":
 	clausulas = const.isos[iso_seleccionada]["Clausula"]
 	# Extraer los nombres de los clausulas
 	nombres_clausulas = [clausula["Nombre"] for clausula in clausulas]
-	options_clausulas = st.multiselect('Seleccione el o los clausulas:',nombres_clausulas,placeholder="Agregue todos los clausula que evaluará")
+	options_clausulas = st.multiselect('Seleccione la o las cláusulas:',nombres_clausulas,placeholder="Agregue todos los clausula que evaluará")
 
 	st.write(" ")
 	st.write(" ")
