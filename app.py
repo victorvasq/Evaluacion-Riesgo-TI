@@ -265,7 +265,7 @@ if ss["proceso"] == "NivelEvaluacion":
 	clausulas = const.isos[iso_seleccionada]["Clausula"]
 	# Extraer los nombres de los clausulas
 	nombres_clausulas = [clausula["Nombre"] for clausula in clausulas]
-	options_clausulas = st.multiselect('Seleccione la o las cláusulas:',nombres_clausulas,placeholder="Agregue todos los clausula que evaluará")
+	options_clausulas = st.multiselect('Seleccione la o las cláusulas:',nombres_clausulas,placeholder="Agregue todas las cláusulas que evaluará")
 
 	st.write(" ")
 	st.write(" ")
